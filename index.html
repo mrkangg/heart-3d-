@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>หัวใจ 3D Interactive — หมุน ผ่า ดูการไหลเวียนเลือด</title>
+<style>
+:root{--bg:#030a12;--panel:#071827ee;--line:#1f5374;--text:#eef7ff;--muted:#a8bed0;--blue:#2b9be9;--red:#eb5865}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif}
+#stage{position:fixed;inset:0;background:radial-gradient(circle at 50% 43%,#16364c 0,#06121f 42%,#02070d 100%)}
+#ui{position:fixed;inset:0;pointer-events:none}
+.panel{background:linear-gradient(180deg,rgba(7,25,41,.95),rgba(3,13,23,.94));border:1px solid #245877;border-radius:15px;box-shadow:0 14px 45px #0009;backdrop-filter:blur(10px)}
+#brand{pointer-events:auto;position:absolute;left:14px;top:14px;width:315px;padding:16px}
+h1{font-size:29px;line-height:1.05;margin:0}h1 span{display:block;font-size:12px;letter-spacing:2px;color:#ffd56f;margin-top:8px}.brandtext{font-size:13px;color:#c3d5e4;line-height:1.55;margin-top:12px}
+#toolbar{pointer-events:auto;position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;padding:6px;gap:4px}
+button{font-family:inherit}.tool{background:transparent;color:#bcd0df;border:0;border-radius:10px;padding:7px 9px;min-width:60px;cursor:pointer}.tool strong{display:block;font-size:21px;color:#f3f9ff}.tool:hover,.tool.on{background:#10405c;color:#fff;outline:1px solid #2b9de1}
+#info{pointer-events:auto;position:absolute;right:14px;top:14px;width:335px;padding:12px}
+.head{font-weight:700;text-align:center;padding:5px 0 10px;border-bottom:1px solid #20455e}.inside{height:220px;margin-top:10px;position:relative;border-radius:10px;overflow:hidden;background:#02070c}.inside canvas{width:100%;height:100%}
+#infoText{font-size:12px;color:#c5d8e8;line-height:1.55;padding:8px 3px;min-height:58px}
+#slider{pointer-events:auto;position:absolute;left:50%;bottom:205px;transform:translateX(-50%);width:min(600px,58vw);padding:10px 15px}
+.slider{display:flex;align-items:center;gap:9px;font-size:12px}.slider input{flex:1}
+#bottom{pointer-events:auto;position:absolute;left:14px;right:14px;bottom:12px;height:178px;display:grid;grid-template-columns:250px 1fr 390px;gap:8px}
+.box{padding:10px}.box h3{font-size:14px;text-align:center;margin:0 0 8px}
+.legend div{font-size:12px;margin:8px 0}.dot{width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:6px}
+.flow{display:flex;align-items:center;justify-content:center;gap:6px;height:110px}.flowStep{width:92px;text-align:center;font-size:10px;color:#c8d8e6}.mini{height:55px;border:1px solid #27556f;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:25px;margin-bottom:4px}
+.chambers{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.ch{border:1px solid #27556f;border-radius:9px;padding:7px;text-align:center;cursor:pointer}.ch:hover{background:#0d344d}.ch b{font-size:25px;display:block}.ch small{font-size:10px}
+#toast{display:none;pointer-events:auto;position:fixed;z-index:30;left:50%;top:50%;transform:translate(-50%,-50%);width:min(390px,90vw);padding:18px;border-radius:15px;background:#061827f7;border:1px solid #3c87ad;box-shadow:0 20px 70px #000c;text-align:center}.close{margin-top:12px;background:#0e334b;border:1px solid #39728e;color:#fff;border-radius:8px;padding:7px 18px;cursor:pointer}
+#tip{position:fixed;bottom:192px;left:50%;transform:translateX(-50%);font-size:11px;color:#b7c8d8;background:#061321cc;padding:6px 12px;border-radius:999px;pointer-events:none}
+@media(max-width:950px){#info{display:none}#brand{width:250px}#bottom{grid-template-columns:1fr;height:132px}.hideSmall{display:none}#slider{bottom:150px;width:72vw}}
+@media(max-width:600px){#brand{left:8px;top:8px;width:185px;padding:10px}h1{font-size:21px}.brandtext{display:none}#toolbar{left:auto;right:7px;top:auto;bottom:7px;transform:none}.tool{min-width:44px;padding:5px}.tool strong{font-size:17px}.tool span{font-size:9px}#bottom{display:none}#slider{bottom:58px;width:92vw}#tip{display:none}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="ui">
+  <section id="brand" class="panel">
+    <h1>โมเดลหัวใจ 3D<span>หมุน • ผ่า • ดูการไหลเวียน</span></h1>
+    <div class="brandtext">สื่อการเรียนรู้กายวิภาคศาสตร์หัวใจสำหรับนักเรียนระดับมัธยมศึกษา หมุนดูรอบด้าน ผ่าดูภายใน และติดตามเส้นทางเลือดได้</div>
+  </section>
+
+  <nav id="toolbar" class="panel">
+    <button class="tool on" id="rotateBtn"><strong>↻</strong><span>หมุน</span></button>
+    <button class="tool" id="cutBtn"><strong>◐</strong><span>ผ่า</span></button>
+    <button class="tool" id="explodeBtn"><strong>✦</strong><span>แยกห้อง</span></button>
+    <button class="tool" id="labelBtn"><strong>🏷</strong><span>ป้ายชื่อ</span></button>
+    <button class="tool" id="flowBtn"><strong>🩸</strong><span>เลือดไหล</span></button>
+    <button class="tool" id="autoBtn"><strong>⟳</strong><span>อัตโนมัติ</span></button>
+    <button class="tool" id="resetBtn"><strong>↺</strong><span>รีเซ็ต</span></button>
+  </nav>
+
+  <aside id="info" class="panel">
+    <div class="head">มุมมองภายใน (ผ่าหัวใจ)</div>
+    <div class="inside" id="inside"></div>
+    <div id="infoText">แตะส่วนใดของหัวใจเพื่อดูชื่อและหน้าที่ หรือเลื่อน “ระดับการผ่า” เพื่อเปิดดูโครงสร้างภายใน</div>
+  </aside>
+
+  <div id="slider" class="panel">
+    <div class="slider"><span>ระดับการผ่า</span><span>ภายนอก</span><input id="cut" type="range" min="0" max="100" value="0"><span>ผ่าลึก</span></div>
+  </div>
+
+  <div id="bottom">
+    <div class="panel box hideSmall"><h3>สีแสดงทิศทางเลือด</h3>
+      <div class="legend">
+        <div><span class="dot" style="background:#2b9be9"></span>เลือดออกซิเจนต่ำ → ไปปอด</div>
+        <div><span class="dot" style="background:#eb5865"></span>เลือดออกซิเจนสูง → ไปเลี้ยงร่างกาย</div>
+        <div>🖱️ ลาก = หมุน &nbsp; ล้อ = ซูม</div>
+      </div>
+    </div>
+    <div class="panel box hideSmall"><h3>เส้นทางการไหลเวียนของเลือด</h3>
+      <div class="flow">
+        <div class="flowStep"><div class="mini">🔵</div>ร่างกาย<br>→ ห้องบนขวา</div><b>→</b>
+        <div class="flowStep"><div class="mini">🫀</div>ห้องล่างขวา<br>→ ปอด</div><b>→</b>
+        <div class="flowStep"><div class="mini">🔴</div>ปอด<br>→ ห้องบนซ้าย</div><b>→</b>
+        <div class="flowStep"><div class="mini">🫀</div>ห้องล่างซ้าย<br>→ เอออร์ตา</div>
+      </div>
+    </div>
+    <div class="panel box"><h3>เลือกห้องหัวใจเพื่อดูข้อมูล</h3>
+      <div class="chambers">
+        <div class="ch" data-id="RA"><b>🔵</b><small>ห้องบนขวา<br>Right Atrium</small></div>
+        <div class="ch" data-id="RV"><b>🔵</b><small>ห้องล่างขวา<br>Right Ventricle</small></div>
+        <div class="ch" data-id="LA"><b>🔴</b><small>ห้องบนซ้าย<br>Left Atrium</small></div>
+        <div class="ch" data-id="LV"><b>🔴</b><small>ห้องล่างซ้าย<br>Left Ventricle</small></div>
+      </div>
+    </div>
+  </div>
+  <div id="tip">ลากเพื่อหมุน • เลื่อนเพื่อซูม • คลิกอวัยวะเพื่อดูข้อมูล</div>
+</div>
+
+<div id="toast"><div id="toastBody"></div><button class="close" onclick="document.getElementById('toast').style.display='none'">ปิด</button></div>
+
+<script>
+(function(){
+  try {
+    var c=document.createElement("canvas");
+    var ok=!!(c.getContext("webgl2")||c.getContext("webgl"));
+    if(!ok){
+      var d=document.createElement("div");
+      d.style="position:fixed;z-index:9999;left:16px;right:16px;top:16px;padding:16px;background:#7b1e2b;color:#fff;border-radius:12px;font-family:system-ui;text-align:center";
+      d.textContent="อุปกรณ์นี้ไม่สามารถใช้งาน WebGL ได้";
+      document.body.appendChild(d);
+    }
+  } catch(e){}
+})();
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js";
+import {OrbitControls} from "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/controls/OrbitControls.js";
+
+const stage=document.getElementById("stage");
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,100);
+camera.position.set(0,.25,7.2);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+renderer.localClippingEnabled=true;stage.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x102238,2.15));
+const key=new THREE.DirectionalLight(0xffffff,3.2);key.position.set(4,6,7);scene.add(key);
+const rim=new THREE.DirectionalLight(0x59aee8,1.4);rim.position.set(-5,2,4);scene.add(rim);
+const warm=new THREE.PointLight(0xff465c,1.0,10);warm.position.set(-3,-1,3);scene.add(warm);
+
+const heart=new THREE.Group();heart.rotation.y=.28;scene.add(heart);
+const rooms=new THREE.Group();heart.add(rooms);
+const vessels=new THREE.Group();heart.add(vessels);
+const anatomy=new THREE.Group();heart.add(anatomy);
+const particles=new THREE.Group();heart.add(particles);
+
+const wallMat=new THREE.MeshPhysicalMaterial({color:0xb83d4e,roughness:.48,clearcoat:.15,transparent:true,opacity:1,side:THREE.DoubleSide});
+const muscleMat=new THREE.MeshPhysicalMaterial({color:0x8e2f40,roughness:.6});
+const redMat=new THREE.MeshPhysicalMaterial({color:0xe65361,roughness:.3});
+const blueMat=new THREE.MeshPhysicalMaterial({color:0x2b8edb,roughness:.28});
+const valveMat=new THREE.MeshPhysicalMaterial({color:0xe6d0a9,roughness:.58});
+
+const data={
+ RA:{name:"ห้องบนขวา (Right Atrium)",info:"รับเลือดที่มีออกซิเจนต่ำจากร่างกายผ่านเวนาคาวา แล้วส่งต่อไปยังห้องล่างขวา",color:"blue"},
+ RV:{name:"ห้องล่างขวา (Right Ventricle)",info:"บีบตัวส่งเลือดที่มีออกซิเจนต่ำไปยังปอดผ่านหลอดเลือดแดงปอด",color:"blue"},
+ LA:{name:"ห้องบนซ้าย (Left Atrium)",info:"รับเลือดที่มีออกซิเจนสูงจากปอดผ่านหลอดเลือดดำปอด แล้วส่งต่อไปห้องล่างซ้าย",color:"red"},
+ LV:{name:"ห้องล่างซ้าย (Left Ventricle)",info:"บีบตัวส่งเลือดที่มีออกซิเจนสูงออกทางเอออร์ตาไปเลี้ยงทั่วร่างกาย",color:"red"},
+ septum:{name:"ผนังกั้นหัวใจ (Septum)",info:"ผนังกล้ามเนื้อที่แยกด้านซ้ายและด้านขวาของหัวใจ ไม่ให้เลือดสองฝั่งปะปนกัน"},
+ aorta:{name:"เอออร์ตา (Aorta)",info:"หลอดเลือดแดงใหญ่ที่นำเลือดออกซิเจนสูงจากหัวใจไปเลี้ยงทั่วร่างกาย"},
+ pulmonary:{name:"หลอดเลือดแดงปอด (Pulmonary Artery)",info:"นำเลือดออกซิเจนต่ำจากห้องล่างขวาไปยังปอด"},
+ vena:{name:"เวนาคาวา (Vena Cava)",info:"นำเลือดออกซิเจนต่ำจากร่างกายกลับเข้าสู่ห้องบนขวา"},
+ tricuspid:{name:"ลิ้นไตรคัสปิด (Tricuspid Valve)",info:"ควบคุมการไหลของเลือดจากห้องบนขวาไปห้องล่างขวา"},
+ mitral:{name:"ลิ้นไมตรัล (Mitral Valve)",info:"ควบคุมการไหลของเลือดจากห้องบนซ้ายไปห้องล่างซ้าย"},
+ aorticValve:{name:"ลิ้นเอออร์ติก (Aortic Valve)",info:"เปิดให้เลือดออกจากห้องล่างซ้ายเข้าสู่เอออร์ตา"},
+ pulmonaryValve:{name:"ลิ้นพัลโมนารี (Pulmonary Valve)",info:"เปิดให้เลือดออกจากห้องล่างขวาไปยังหลอดเลือดแดงปอด"}
+};
+
+function objSphere(parent,x,y,z,sx,sy,sz,mat,id){
+ const m=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),mat);
+ m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.userData.id=id;parent.add(m);return m;
+}
+// Outer muscle wall
+const shell=objSphere(anatomy,0,-.2,0,1.72,2.12,.88,wallMat,"shell");
+shell.rotation.z=-.11;
+const apex=objSphere(anatomy,.32,-1.68,.05,1.02,1.04,.72,muscleMat,"apex");
+apex.rotation.z=-.12;
+
+// Four chambers
+const RA=objSphere(rooms,-.59,.46,.54,.55,.69,.34,blueMat,"RA");
+const RV=objSphere(rooms,-.56,-.55,.56,.64,.98,.37,blueMat,"RV");
+const LA=objSphere(rooms,.59,.47,.54,.53,.68,.34,redMat,"LA");
+const LV=objSphere(rooms,.56,-.60,.56,.66,1.08,.40,redMat,"LV");
+const sept=objSphere(rooms,0,-.34,.61,.13,1.46,.22,muscleMat,"septum");
+
+// Vessel helper
+function cylinder(parent,x,y,z,r,h,mat,id,rz=0){
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r*.9,h,40),mat);
+ m.position.set(x,y,z);m.rotation.z=rz;m.userData.id=id;parent.add(m);return m;
+}
+const aorta=cylinder(vessels,.49,1.68,.02,.34,1.72,redMat,"aorta",-0.17);
+const pulmonary=cylinder(vessels,-.49,1.58,.02,.30,1.42,blueMat,"pulmonary",0.18);
+const vena=cylinder(vessels,-1.04,1.16,.02,.25,1.24,blueMat,"vena",0.52);
+// Pulmonary veins
+cylinder(vessels,1.12,.94,.04,.15,.85,redMat,"LA",1.12);
+cylinder(vessels,1.10,.50,.04,.15,.75,redMat,"LA",-1.12);
+
+// Valve groups
+function makeValve(x,y,z,id){
+ const g=new THREE.Group();g.position.set(x,y,z);g.userData.id=id;
+ for(let i=0;i<3;i++){
+  const p=new THREE.Mesh(new THREE.SphereGeometry(.13,24,16),valveMat);
+  p.scale.set(1.2,.55,.28);p.position.set(Math.cos(i*Math.PI*2/3)*.19,Math.sin(i*Math.PI*2/3)*.19,0);g.add(p);
+ }
+ anatomy.add(g);return g;
+}
+makeValve(-.55,-.02,.90,"tricuspid");
+makeValve(.55,-.02,.90,"mitral");
+makeValve(.49,.57,.88,"aorticValve");
+makeValve(-.49,.57,.88,"pulmonaryValve");
+
+// Surface coronary vessels
+function curveTube(points,mat,id){
+ const curve=new THREE.CatmullRomCurve3(points);
+ const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,.45,.025,10,false),mat);
+ tube.userData.id=id;anatomy.add(tube);return tube;
+}
+curveTube([new THREE.Vector3(-.25,.25,.91),new THREE.Vector3(-.05,-.2,.98),new THREE.Vector3(.02,-.75,.98),new THREE.Vector3(.25,-1.2,.84)],redMat,"shell");
+curveTube([new THREE.Vector3(.18,.22,.94),new THREE.Vector3(.34,-.1,.98),new THREE.Vector3(.52,-.55,.94),new THREE.Vector3(.72,-.92,.82)],blueMat,"shell");
+
+// Clipping plane
+const clip=new THREE.Plane(new THREE.Vector3(-1,0,0),.92);
+[anatomy,rooms,vessels].forEach(g=>g.traverse(o=>{if(o.material)o.material.clippingPlanes=[clip]}));
+
+let cut=0,exploded=false,showLabels=false,flowOn=false,auto=false;
+const labelGroup=new THREE.Group();heart.add(labelGroup);
+
+function makeLabel(text,pos,color){
+ const c=document.createElement("canvas");c.width=512;c.height=88;
+ const x=c.getContext("2d");x.clearRect(0,0,512,88);x.font="bold 30px sans-serif";x.fillStyle=color;x.fillText(text,14,54);
+ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));
+ s.position.copy(pos);s.scale.set(2.5,.43,1);return s;
+}
+function rebuildLabels(){
+ labelGroup.clear();
+ if(!showLabels)return;
+ const entries=[
+  [RA,"ห้องบนขวา",new THREE.Color("#55b7ff"),[-.6,.85,1]],
+  [RV,"ห้องล่างขวา",new THREE.Color("#55b7ff"),[-.8,-.45,1]],
+  [LA,"ห้องบนซ้าย",new THREE.Color("#ff7480"),[.7,.9,1]],
+  [LV,"ห้องล่างซ้าย",new THREE.Color("#ff7480"),[.9,-.55,1]],
+  [aorta,"เอออร์ตา",new THREE.Color("#ff7480"),[1.15,1.95,.8]],
+  [pulmonary,"หลอดเลือดแดงปอด",new THREE.Color("#55b7ff"),[-1.25,1.85,.8]]
+ ];
+ entries.forEach(([o,t,col,p])=>labelGroup.add(makeLabel(t,new THREE.Vector3(...p),col.getStyle())));
+}
+function updateCut(v){
+ cut=+v;document.getElementById("cut").value=cut;
+ clip.constant=.92-(cut/100)*2.05;
+ const r=cut/100;
+ [RA,RV,LA,LV,sept].forEach(o=>o.material.opacity=.16+.84*r);
+ shell.material.opacity=Math.max(.08,1-.9*r);
+ apex.material.opacity=Math.max(.08,1-.9*r);
+}
+function setExplode(v){
+ exploded=v;const d=v?.58:0;
+ RA.position.x=-.59-d;RV.position.x=-.56-d;LA.position.x=.59+d;LV.position.x=.56+d;
+}
+function info(id){
+ const d=data[id];if(!d)return;
+ document.getElementById("infoText").innerHTML="<b style='font-size:14px;color:#fff'>"+d.name+"</b><br>"+d.info;
+}
+function toast(id){
+ const d=data[id];if(!d)return;
+ document.getElementById("toastBody").innerHTML="<b style='font-size:19px'>"+d.name+"</b><br><br>"+d.info;
+ document.getElementById("toast").style.display="block";
+}
+function button(id,on){document.getElementById(id).classList.toggle("on",on)}
+
+document.getElementById("cut").oninput=e=>updateCut(e.target.value);
+document.getElementById("cutBtn").onclick=()=>updateCut(cut>0?0:72);
+document.getElementById("explodeBtn").onclick=()=>{setExplode(!exploded);button("explodeBtn",exploded);if(exploded)updateCut(Math.max(cut,70))};
+document.getElementById("labelBtn").onclick=()=>{showLabels=!showLabels;button("labelBtn",showLabels);rebuildLabels()};
+document.getElementById("flowBtn").onclick=()=>{flowOn=!flowOn;button("flowBtn",flowOn)};
+document.getElementById("autoBtn").onclick=()=>{auto=!auto;button("autoBtn",auto)};
+document.getElementById("resetBtn").onclick=()=>{heart.rotation.set(0,.28,0);camera.position.set(0,.25,7.2);setExplode(false);updateCut(0);showLabels=false;rebuildLabels();flowOn=false;auto=false;["explodeBtn","labelBtn","flowBtn","autoBtn"].forEach(id=>button(id,false));info("shell")};
+
+document.querySelectorAll(".ch").forEach(e=>e.onclick=()=>{
+ const id=e.dataset.id;setExplode(true);updateCut(82);info(id);toast(id);button("explodeBtn",true);
+});
+
+// Flow particles follow a stylized six-stage route
+const blueP=[],redP=[];
+function particle(mat,arr){const m=new THREE.Mesh(new THREE.SphereGeometry(.045,12,10),mat);particles.add(m);arr.push({m,t:Math.random()});}
+for(let i=0;i<26;i++){particle(blueMat,blueP);particle(redMat,redP)}
+const bluePath=[
+ new THREE.Vector3(-1.08,1.15,.85),new THREE.Vector3(-.72,.68,.88),new THREE.Vector3(-.55,-.45,.9),
+ new THREE.Vector3(-.48,1.55,.7),new THREE.Vector3(.0,1.85,.7),new THREE.Vector3(.62,.55,.9)
+];
+const redPath=[
+ new THREE.Vector3(.62,.55,.9),new THREE.Vector3(.55,-.55,.9),new THREE.Vector3(.5,1.65,.72),
+ new THREE.Vector3(1.0,1.2,.7),new THREE.Vector3(1.35,.55,.7),new THREE.Vector3(1.55,-.2,.6)
+];
+function pathPoint(path,t){
+ const n=path.length-1,scaled=t*n,i=Math.min(n-1,Math.floor(scaled)),f=scaled-i;
+ return path[i].clone().lerp(path[i+1],f);
+}
+particles.visible=false;
+
+// Raycast selection
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+renderer.domElement.addEventListener("pointerdown",e=>{
+ mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;
+ ray.setFromCamera(mouse,camera);
+ const hit=ray.intersectObjects(heart.children,true).find(h=>h.object.userData.id);
+ if(hit){const id=hit.object.userData.id;if(data[id]){info(id);toast(id)}}
+});
+
+// Small internal preview
+const box=document.getElementById("inside"),miniScene=new THREE.Scene();
+const miniCamera=new THREE.PerspectiveCamera(42,1,.1,30);miniCamera.position.set(0,.1,5.2);
+const miniRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+miniRenderer.setPixelRatio(1.5);miniRenderer.setSize(335,220);box.appendChild(miniRenderer.domElement);
+miniScene.add(new THREE.HemisphereLight(0xffffff,0x11243a,2.2));
+const mini=new THREE.Group();miniScene.add(mini);
+function miniPart(x,y,sx,sy,mat){const o=new THREE.Mesh(new THREE.SphereGeometry(1,32,20),mat);o.position.set(x,y,0);o.scale.set(sx,sy,.48);mini.add(o)}
+miniPart(-.58,.38,.48,.62,blueMat.clone());miniPart(-.55,-.58,.58,.92,blueMat.clone());
+miniPart(.58,.38,.48,.62,redMat.clone());miniPart(.55,-.6,.60,1.0,redMat.clone());
+const miniSep=new THREE.Mesh(new THREE.BoxGeometry(.12,2.5,.28),muscleMat.clone());mini.add(miniSep);
+const miniShell=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),wallMat.clone());miniShell.scale.set(1.65,2.05,.55);miniShell.material.opacity=.18;mini.add(miniShell);
+
+let last=performance.now();
+function animate(now){
+ requestAnimationFrame(animate);const dt=Math.min(.05,(now-last)/1000);last=now;
+ if(auto)heart.rotation.y+=dt*.55;
+ if(flowOn){
+  particles.visible=true;
+  blueP.forEach((p,i)=>{p.t=(p.t+dt*.10)%1;p.m.position.copy(pathPoint(bluePath,p.t));});
+  redP.forEach((p,i)=>{p.t=(p.t+dt*.09)%1;p.m.position.copy(pathPoint(redPath,p.t));});
+ }else particles.visible=false;
+ mini.rotation.y+=dt*.3;
+ renderer.render(scene,camera);miniRenderer.render(miniScene,miniCamera);
+}
+requestAnimationFrame(animate);
+addEventListener("resize",()=>{
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+ miniRenderer.setSize(box.clientWidth,box.clientHeight);miniCamera.aspect=box.clientWidth/box.clientHeight;miniCamera.updateProjectionMatrix();
+});
+updateCut(0);
+info("shell");
+</script>
+</body>
+</html>
